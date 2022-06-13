@@ -23,6 +23,8 @@ df2= df2.merge(df1,on='id')
 C = np.mean(df2['vote_average'])
 # c
 
+#So, the mean rating for all the movies is approx 6 on a scale of 10.The next step is to determine an appropriate value for m, the minimum votes required to be listed in the chart. We will use 90th percentile as our cutoff. In other words, for a movie to feature in the charts, it must have more votes than at least 90% of the movies in the list.
+
 m = np.quantile(df2['vote_count'], 0.9)
 # m
 
@@ -40,6 +42,10 @@ q_movies = q_movies.sort_values('score', ascending=False)
 #Print the top 15 movies
 # q_movies[['title', 'vote_count', 'vote_average', 'score']].head(10)
 
+
+#We have made our first(though very basic) recommender. 
+#Under the Trending Now tab of these systems we find movies that are very popular and 
+#they can just be obtained by sorting the dataset by the popularity column.
 pop= df2.sort_values('popularity', ascending=False)
 plt.figure(figsize=(12,4))
 
@@ -59,19 +65,37 @@ df2['overview'] = df2['overview'].fillna('')
 
 #Construct the required TF-IDF matrix by fitting and transforming the data
 tfidf_matrix = tfidf.fit_transform(df2['overview'])
+#We see that over 20,000 different words were used to describe the 4800 movies in our dataset.
+#With this matrix in hand, we can now compute a similarity score.
+
 
 # creating a list with all the movie names given in the dataset
 
 list_of_all_titles = df2['title'].tolist()
 
+#We will be using the cosine similarity to calculate a numeric quantity that denotes the similarity between two movies. 
 
 # Compute the cosine similarity matrix
+#Since we have used the TF-IDF vectorizer, calculating the dot product will directly 
+#give us the cosine similarity score. Therefore, we will use sklearn's linear_kernel() 
+#instead of cosine_similarities() since it is faster.
 cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
 #Construct a reverse map of indices and movie titles
 indices = pd.Series(df2.index, index=df2['title']).drop_duplicates()
 
 # Function that takes in movie title as input and outputs most similar movies
+
+#We are now in a good position to define our recommendation function. These are the following steps we'll follow :-
+
+# Get the index of the movie given its title.
+# Get the list of cosine similarity scores for that particular movie with all movies. 
+# Convert it into a list of tuples where the first element is its position and the second is the similarity score.
+# Sort the aforementioned list of tuples based on the similarity scores; that is, the second element.
+# Get the top 10 elements of this list. Ignore the first element as it refers to self (the movie most similar to a particular movie is the movie itself).
+# Return the titles corresponding to the indices of the top elements.
+
+
 def get_recommendations(title, cosine_sim=cosine_sim):
     # Get the index of the movie that matches the title
     idx = indices[title]
@@ -93,6 +117,11 @@ def get_recommendations(title, cosine_sim=cosine_sim):
 
 # Parse the stringified features into their corresponding python objects
 from ast import literal_eval
+
+
+#We are going to build a recommender based on the following metadata: 
+# the 3 top actors, the director, related genres and the movie plot keywords.
+
 
 features = ['cast', 'crew', 'keywords', 'genres']
 for feature in features:
@@ -124,6 +153,9 @@ features = ['cast', 'keywords', 'genres']
 for feature in features:
     df2[feature] = df2[feature].apply(get_list)
     
+    
+#The next step would be to convert the names and keyword instances into lowercase and strip all the spaces between them. This is done so that our vectorizer doesn't count the Chris of "Chris Rock" and "Chris Helmsworth" as the same.
+
 # Function to convert all strings to lower case and strip names of spaces
 def clean_data(x):
     if isinstance(x, list):
@@ -141,10 +173,16 @@ features = ['cast', 'keywords', 'director', 'genres']
 for feature in features:
     df2[feature] = df2[feature].apply(clean_data)
     
+#We can now create our "metadata soup", which is a string that contains all the metadata that we want to feed to our vectorizer (namely actors, director and keywords).
 def create_soup(x):
     return ' '.join(x['keywords']) + ' ' + ' '.join(x['cast']) + ' ' + x['director'] + ' ' + ' '.join(x['genres'])
 df2['soup'] = df2.apply(create_soup, axis=1)
 
+
+
+#The next steps are the same as what we did with our plot description based recommender
+#the main difference is that we use the CountVectorizer() instead of TF-IDF. 
+#This is because we do not want to down-weight the presence of an actor/director if he or she has acted or directed in relatively more movies.
 # Import CountVectorizer and create the count matrix
 
 count = CountVectorizer(stop_words='english')
