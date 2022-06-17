@@ -1,4 +1,5 @@
 import pandas as pd 
+import h5py
 import sys
 import numpy as np 
 import matplotlib.pyplot as plt
@@ -56,6 +57,16 @@ plt.xlabel("Popularity")
 plt.title("Popular Movies")
 plt.savefig('foo.png',dpi=400)
 
+#using seaborn to visualize the same data
+import seaborn as sns
+sns.set()
+# same plotting code as above!
+plt.barh(pop['title'].head(6),pop['popularity'].head(6), align='center',
+        color='blue')
+
+plt.xlabel("Popularity")
+plt.title("Popular Movies")
+plt.savefig('seaborn.png',dpi=400)
 
 #Define a TF-IDF Vectorizer Object. Remove all english stop words such as 'the', 'a'
 tfidf = TfidfVectorizer(stop_words='english')
@@ -198,9 +209,20 @@ indices = pd.Series(df2.index, index=df2['title'])
 
 original_stdout = sys.stdout # Save a reference to the original standard output
 
-with open('recommendation.txt', 'w') as f:
+with open('recommendation.csv', 'w') as f:
     sys.stdout = f # Change the standard output to the file we created.
     outp = get_recommendations('Iron Man', cosine_sim2)
     print(outp)
     sys.stdout = original_stdout # Reset the standard output to its original value
+    
+with h5py.File('recommendation.hdf5', 'w') as f:
+    outp = get_recommendations('Iron Man', cosine_sim2)
+    dset = f.create_dataset("default", data = outp)
+    
+# with h5py.File('recommendation.hdf5', 'w') as f:
+# #     dset = f.create_dataset("default", data = arr)
+#     sys.stdout = f # Change the standard output to the file we created.
+#     outp = get_recommendations('Iron Man', cosine_sim2)
+#     print(outp)
+#     sys.stdout = original_stdout
     
